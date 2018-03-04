@@ -318,6 +318,7 @@ declare module 'ccxt' {
     export class btcchina extends Exchange {}
     export class btcexchange extends btcturk {}
     export class btcmarkets extends Exchange {}
+    export class btctrade extends Exchange {}
     export class btctradeim extends coinegg {}
     export class btctradeua extends Exchange {}
     export class btcturk extends Exchange {}
