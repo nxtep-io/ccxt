@@ -19,11 +19,13 @@ module.exports = class BTCTrade extends Exchange {
                 'CORS': false,
                 'publicAPI': true,
                 'fetchOrderBook': true,
+                'fetchBalance': true,
             },
             'urls': {
                 'logo': 'https://user-images.githubusercontent.com/1294454/27837060-e7c58714-60ea-11e7-9192-f05e86adb83f.jpg',
                 'api': {
                     'public': 'https://api.bitcointrade.com.br/v1/public',
+                    'private': 'https://api.bitcointrade.com.br/v1',
                 },
                 'www': 'https://bitcointrade.com.br/',
                 'doc': [
@@ -35,6 +37,11 @@ module.exports = class BTCTrade extends Exchange {
                     'get': [
                         '{coin}/orders/', // last slash critical
                         '{coin}/ticker/',
+                    ],
+                },
+                'private': {
+                    'get': [
+                        'wallets/balance/',
                     ],
                 },
             },
@@ -71,6 +78,7 @@ module.exports = class BTCTrade extends Exchange {
             'high': parseFloat (ticker['high']),
             'low': parseFloat (ticker['low']),
             'bid': parseFloat (ticker['buy']),
+
             'ask': parseFloat (ticker['sell']),
             'vwap': undefined,
             'open': undefined,
@@ -86,6 +94,27 @@ module.exports = class BTCTrade extends Exchange {
         };
     }
 
+    async fetchBalance (params = {}) {
+        const response = await this.privateGetWalletsBalance ();
+        if (!(response['data'] instanceof Array)) {
+            // NOT OK
+        }
+        let result = { 'info': response };
+        const data = response['data'];
+        if (!response['message']) {
+            // OK
+            for (let i = 0; i < data.length; i++) {
+                const wallet = data[i];
+                let account = this.account ();
+                account['free'] = parseFloat (wallet['available_amount']); 
+                account['used'] = parseFloat (wallet['locked_amount']);
+                account['total'] = account['free'] + account['used'];
+                result[wallet['currency_code']] = account;
+            }
+        }
+        return this.parseBalance (result);
+    }
+
     sign (path, api = 'public', method = 'GET', params = {}, headers = undefined, body = undefined) {
         let url = this.urls['api'][api] + '/';
         let query = this.omit (params, this.extractParams (path));
@@ -93,6 +122,11 @@ module.exports = class BTCTrade extends Exchange {
             url += this.implodeParams (path, params);
             if (Object.keys (query).length)
                 url += '?' + this.urlencode (query);
+        } else {
+            url += this.implodeParams (path, params);
+            headers = {
+                'Authorization': `ApiToken ${this.apiKey}`,
+            };
         }
         return { 'url': url, 'method': method, 'body': body, 'headers': headers };
     }
