@@ -34,6 +34,7 @@ module.exports = class BTCTrade extends Exchange {
                 'public': {
                     'get': [
                         '{coin}/orders/', // last slash critical
+                        '{coin}/ticker/',
                     ],
                 },
             },
@@ -50,11 +51,39 @@ module.exports = class BTCTrade extends Exchange {
     }
 
     async fetchOrderBook (symbol, limit = undefined, params = {}) {
-        let market = this.market (symbol);
-        let response = await this.publicGetCoinOrders (this.extend ({
+        const market = this.market (symbol);
+        const response = await this.publicGetCoinOrders (this.extend ({
             'coin': market['base'],
         }, params));
-        return this.parseOrderBook (response.data, this.milliseconds( ), 'bids', 'asks', 'unit_price', 'amount');
+        return this.parseOrderBook (response.data, this.milliseconds (), 'bids', 'asks', 'unit_price', 'amount');
+    }
+
+    async fetchTicker (symbol, params = {}) {
+        const market = this.market (symbol);
+        const response = await this.publicGetCoinTicker (this.extend ({
+            'coin': market['base'],
+        }, params));
+        const ticker = response['data'];
+        return {
+            'symbol': symbol,
+            'timestamp': new Date (ticker['date']).getDate (),
+            'datetime': ticker['date'],
+            'high': parseFloat (ticker['high']),
+            'low': parseFloat (ticker['low']),
+            'bid': parseFloat (ticker['buy']),
+            'ask': parseFloat (ticker['sell']),
+            'vwap': undefined,
+            'open': undefined,
+            'close': undefined,
+            'first': undefined,
+            'last': parseFloat (ticker['last']),
+            'change': undefined,
+            'percentage': undefined,
+            'average': undefined,
+            'baseVolume': parseFloat (ticker['volume']),
+            'quoteVolume': undefined,
+            'info': ticker,
+        };
     }
 
     sign (path, api = 'public', method = 'GET', params = {}, headers = undefined, body = undefined) {
