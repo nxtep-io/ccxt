@@ -43,6 +43,9 @@ module.exports = class BTCTrade extends Exchange {
                     'get': [
                         'wallets/balance/',
                     ],
+                    'post': [
+                        'market/create_order',
+                    ],
                 },
             },
             'markets': {
@@ -115,6 +118,29 @@ module.exports = class BTCTrade extends Exchange {
         return this.parseBalance (result);
     }
 
+    async createOrder (symbol, type, side, amount, price = undefined, params = {}) {
+        let response = undefined;
+        if (type === 'market') {
+            response = await this.privatePostMarketCreateOrder ({
+                'type': side, // BTCTrade uses type as buy or sell
+                'currency': symbol,
+                'subtype': 'market',
+                'amount': amount,
+            });
+        } else if (type === 'limit') {
+            response = await this.privatePostMarketCreateOrder ({
+                'type': side, // BTCTrade uses type as buy or sell
+                'currency': symbol,
+                'subtype': 'market',
+                'amount': amount,
+                'unit_price': price,
+            });
+        }
+        return {
+            'info': response,
+        };
+    }
+
     sign (path, api = 'public', method = 'GET', params = {}, headers = undefined, body = undefined) {
         let url = this.urls['api'][api] + '/';
         let query = this.omit (params, this.extractParams (path));
@@ -123,9 +149,15 @@ module.exports = class BTCTrade extends Exchange {
             if (Object.keys (query).length)
                 url += '?' + this.urlencode (query);
         } else {
-            url += this.implodeParams (path, params);
+            url += path;
+            if (method === 'GET') {
+                url += this.implodeParams (path, params);
+            } else {
+                body = JSON.stringify (params);
+            }
             headers = {
                 'Authorization': `ApiToken ${this.apiKey}`,
+                'Content-Type': 'application/json',
             };
         }
         return { 'url': url, 'method': method, 'body': body, 'headers': headers };
