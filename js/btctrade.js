@@ -131,7 +131,7 @@ module.exports = class BTCTrade extends Exchange {
             response = await this.privatePostMarketCreateOrder ({
                 'type': side, // BTCTrade uses type as buy or sell
                 'currency': symbol,
-                'subtype': 'market',
+                'subtype': 'limited',
                 'amount': amount,
                 'unit_price': price,
             });
