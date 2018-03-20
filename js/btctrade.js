@@ -20,6 +20,7 @@ module.exports = class BTCTrade extends Exchange {
                 'publicAPI': true,
                 'fetchOrderBook': true,
                 'fetchBalance': true,
+                'createOrder': true,
             },
             'urls': {
                 'logo': 'https://user-images.githubusercontent.com/1294454/27837060-e7c58714-60ea-11e7-9192-f05e86adb83f.jpg',
@@ -42,6 +43,7 @@ module.exports = class BTCTrade extends Exchange {
                 'private': {
                     'get': [
                         'wallets/balance/',
+                        'market/user_orders/list',
                     ],
                     'post': [
                         'market/create_order',
@@ -109,7 +111,7 @@ module.exports = class BTCTrade extends Exchange {
             for (let i = 0; i < data.length; i++) {
                 const wallet = data[i];
                 let account = this.account ();
-                account['free'] = parseFloat (wallet['available_amount']); 
+                account['free'] = parseFloat (wallet['available_amount']);
                 account['used'] = parseFloat (wallet['locked_amount']);
                 account['total'] = account['free'] + account['used'];
                 result[wallet['currency_code']] = account;
@@ -120,17 +122,18 @@ module.exports = class BTCTrade extends Exchange {
 
     async createOrder (symbol, type, side, amount, price = undefined, params = {}) {
         let response = undefined;
+        const market = this.market (symbol);
         if (type === 'market') {
             response = await this.privatePostMarketCreateOrder ({
                 'type': side, // BTCTrade uses type as buy or sell
-                'currency': symbol,
+                'currency': market['base'],
                 'subtype': 'market',
                 'amount': amount,
             });
         } else if (type === 'limit') {
             response = await this.privatePostMarketCreateOrder ({
                 'type': side, // BTCTrade uses type as buy or sell
-                'currency': symbol,
+                'currency': market['base'],
                 'subtype': 'limited',
                 'amount': amount,
                 'unit_price': price,
@@ -138,6 +141,54 @@ module.exports = class BTCTrade extends Exchange {
         }
         return {
             'info': response,
+        };
+    }
+
+    async fetchOrders (symbol = undefined, params = {}) {
+        if (!symbol)
+            throw new ExchangeError ('fetchOrders requires a symbol');
+        const market = this.market (symbol);
+        const response = await this.privateGetMarketUserOrdersList (this.extend ({
+            'currency': market['base'],
+            ...params,
+        }));
+        if (response.message === null) {
+            // OK
+            return response.data.orders.map (this.parseOrder.bind (this));
+        } else throw new ExchangeError (response.message);
+    }
+
+    parseStatus (status) {
+        if (status === 'waiting')
+            return 'open';
+        else if (status === 'canceled')
+            return status;
+        else if (status === 'executed_completely' || 'executed_partially')
+            return 'open';
+        else throw new ExchangeError (`Invalid status: ${status}`);
+    }
+
+    parseOrder (order) {
+        const price = this.safeFloat (order, 'unit_price');
+        const amount = this.safeFloat (order, 'requested_amount');
+        const cost = this.safeFloat (order, 'total_price');
+        const remaining = this.safeFloat (order, 'remaining_price');
+        const filled = this.safeFloat (order, 'executed_amount');
+        return {
+            'info': order,
+            'id': order.id,
+            'timestamp': new Date (order['create_date']).getDate (),
+            'datetime': order['create_date'],
+            'symbol': order['currencyCode'],
+            'type': order.subtype,
+            'side': order.type,
+            'price': price,
+            'cost': cost,
+            'amount': amount,
+            'remaining': remaining,
+            'filled': filled,
+            'status': this.parseStatus (order.status),
+            // 'fee': '',
         };
     }
 
@@ -151,7 +202,8 @@ module.exports = class BTCTrade extends Exchange {
         } else {
             url += path;
             if (method === 'GET') {
-                url += this.implodeParams (path, params);
+                if (Object.keys (query).length)
+                    url += '?' + this.urlencode (query);
             } else {
                 body = JSON.stringify (params);
             }
