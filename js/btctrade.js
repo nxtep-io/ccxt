@@ -48,6 +48,9 @@ module.exports = class BTCTrade extends Exchange {
                     'post': [
                         'market/create_order',
                     ],
+                    'delete': [
+                        'market/user_orders',
+                    ],
                 },
             },
             'markets': {
@@ -139,9 +142,22 @@ module.exports = class BTCTrade extends Exchange {
                 'unit_price': price,
             });
         }
+        const data = response.data;
         return {
-            'info': response,
+            'info': data,
+            'id': data.id,
+            'amount': this.safeFloat (data, 'amount'),
+            'price': this.safeFloat (data, 'unit_price'),
+            'user': data['user_code'],
+            'code': data['code'],
         };
+    }
+
+    async cancelOrder (id, params = {}) {
+        const response = await this.privateDeleteMarketUserOrders (this.extend ({
+            'id': id,
+        }, params));
+        return response.data === null && response.message === null;
     }
 
     async fetchOrders (symbol = undefined, params = {}) {
@@ -159,13 +175,7 @@ module.exports = class BTCTrade extends Exchange {
     }
 
     parseStatus (status) {
-        if (status === 'waiting')
-            return 'open';
-        else if (status === 'canceled')
-            return status;
-        else if (status === 'executed_completely' || 'executed_partially')
-            return 'open';
-        else throw new ExchangeError (`Invalid status: ${status}`);
+        return status === 'canceled' ? status : 'open';
     }
 
     parseOrder (order) {
@@ -177,8 +187,8 @@ module.exports = class BTCTrade extends Exchange {
         return {
             'info': order,
             'id': order.id,
-            'timestamp': new Date (order['create_date']).getDate (),
-            'datetime': order['create_date'],
+            'timestamp': new Date (order['create_date'] || Date.now ()).getTime (),
+            'datetime': order['create_date'] || new Date (),
             'symbol': order['currencyCode'],
             'type': order.subtype,
             'side': order.type,
