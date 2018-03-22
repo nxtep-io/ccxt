@@ -21,6 +21,7 @@ module.exports = class BTCTrade extends Exchange {
                 'fetchOrderBook': true,
                 'fetchBalance': true,
                 'createOrder': true,
+                'cancelOrder': true,
             },
             'urls': {
                 'logo': 'https://user-images.githubusercontent.com/1294454/27837060-e7c58714-60ea-11e7-9192-f05e86adb83f.jpg',
