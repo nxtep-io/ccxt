@@ -140,7 +140,7 @@ module.exports = class foxbit extends Exchange {
         let market = this.market (symbol);
         let orderSide = (side === 'buy') ? '1' : '2';
         let order = {
-            'ClOrdID': this.nonce (),
+            'ClOrdID': this.nonce ().toString (),
             'Symbol': market['id'],
             'Side': orderSide,
             'OrdType': '2',
