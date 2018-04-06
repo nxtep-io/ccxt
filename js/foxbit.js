@@ -39,17 +39,22 @@ module.exports = class foxbit extends Exchange {
                 },
                 'private': {
                     'post': [
-                        'D',   // order
-                        'F',   // cancel order
-                        'U2',  // balance
-                        'U4',  // my orders
-                        'U6',  // withdraw
-                        'U18', // deposit
-                        'U24', // confirm withdrawal
-                        'U26', // list withdrawals
-                        'U30', // list deposits
-                        'U34', // ledger
-                        'U70', // cancel withdrawal
+                        'message', // message
+                        
+                        // TODO:  The requests below may be deprecated and
+                        //        are known to be failing for most or all of the users
+                        //
+                        'D',       // order
+                        'F',       // cancel order
+                        'U2',      // balance
+                        'U4',      // my orders
+                        'U6',      // withdraw
+                        'U18',     // deposit
+                        'U24',     // confirm withdrawal
+                        'U26',     // list withdrawals
+                        'U30',     // list deposits
+                        'U34',     // ledger
+                        'U70',     // cancel withdrawal
                     ],
                 },
             },
@@ -148,7 +153,7 @@ module.exports = class foxbit extends Exchange {
             'OrderQty': amount,
             'BrokerID': market['brokerId'],
         };
-        let response = await this.privatePostD (this.extend (order, params));
+        let response = await this.privatePostMessage (this.extend (order, params));
         let indexed = this.indexBy (response['Responses'], 'MsgType');
         let execution = indexed['8'];
         return {
@@ -171,13 +176,13 @@ module.exports = class foxbit extends Exchange {
                 url += '?' + this.urlencode (query);
         } else {
             this.checkRequiredCredentials ();
-            let nonce = this.nonce ().toString ();
-            let request = this.extend ({ 'MsgType': path }, query);
+            let nonce = Date.now ().toString ();
+            let request = this.extend ({ 'MsgType': path === 'message' ? 'D' : path }, query);
             body = this.json (request);
             headers = {
                 'APIKey': this.apiKey,
                 'Nonce': nonce,
-                'Signature': this.hmac (this.encode (nonce), this.encode (this.secret)),
+                'Signature': this.hmac (nonce, this.secret),
                 'Content-Type': 'application/json',
             };
         }
