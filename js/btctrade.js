@@ -161,7 +161,7 @@ module.exports = class BTCTrade extends Exchange {
         return response.data === null && response.message === null;
     }
 
-    async fetchOrders (symbol = undefined, params = {}) {
+    async fetchTrades (symbol = undefined, params = {}) {
         if (!symbol)
             throw new ExchangeError ('fetchOrders requires a symbol');
         const market = this.market (symbol);
