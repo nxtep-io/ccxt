@@ -19,6 +19,7 @@ module.exports = class mercado extends Exchange {
                 'CORS': true,
                 'createMarketOrder': false,
                 'fetchOrder': true,
+                'fetchOrders': true,
                 'withdraw': true,
             },
             'urls': {
@@ -236,6 +237,19 @@ module.exports = class mercado extends Exchange {
             'fee': fee,
         };
         return result;
+    }
+
+    async fetchOrders (symbol, params = {}) {
+        if (!symbol)
+            throw new ExchangeError (this.id + ' fetchOrder() requires a symbol argument');
+        await this.loadMarkets ();
+        let market = this.market (symbol);
+        let response = undefined;
+        response = await this.privatePostListOrders (this.extend ({
+            'coin_pair': market['id'],
+        }, params));
+        const orders = response['response_data'].orders;
+        return orders.map (e => this.parseOrder (e));
     }
 
     async fetchOrder (id, symbol = undefined, params = {}) {
