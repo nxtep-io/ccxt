@@ -127,7 +127,7 @@ module.exports = class mercado extends Exchange {
         };
     }
 
-    async fetchTrades (symbol, since = undefined, limit = undefined, params = {}) {
+    /* async fetchTrades (symbol, since = undefined, limit = undefined, params = {}) {
         let market = this.market (symbol);
         let method = 'publicGetCoinTrades';
         let request = {
@@ -142,7 +142,7 @@ module.exports = class mercado extends Exchange {
             method += 'To';
         let response = await this[method] (this.extend (request, params));
         return this.parseTrades (response, market, since, limit);
-    }
+    } */
 
     async fetchBalance (params = {}) {
         let response = await this.privatePostGetAccountInfo ();
@@ -239,7 +239,7 @@ module.exports = class mercado extends Exchange {
         return result;
     }
 
-    async fetchOrders (symbol, params = {}) {
+    async fetchTrades (symbol, params = {}) {
         if (!symbol)
             throw new ExchangeError (this.id + ' fetchOrder() requires a symbol argument');
         await this.loadMarkets ();
