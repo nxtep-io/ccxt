@@ -130,13 +130,47 @@ module.exports = class foxbit extends Exchange {
         };
     }
 
-    async fetchTrades (symbol, since = undefined, limit = undefined, params = {}) {
+    /* async fetchTrades (symbol, since = undefined, limit = undefined, params = {}) {
         let market = this.market (symbol);
         let response = await this.publicGetCurrencyTrades (this.extend ({
             'currency': market['quote'],
             'crypto_currency': market['base'],
         }, params));
         return this.parseTrades (response, market, since, limit);
+    } */
+
+    async fetchTrades (symbol, params = {}) {
+        // let market = this.market (symbol);
+        let response = await this.privatePostU4 (this.extend ({
+            'OrdersReqID': this.nonce ().toString (),
+        }));
+        return this.parseOrderList (response['Responses'][0], symbol);
+    }
+
+    async parseOrderList (orderList, symbol) {
+        const market = this.market (symbol);
+        const columns = orderList['Columns'];
+        const orders = orderList['OrdListGrp'].map ((items) => {
+            const order = {};
+            for (let i = 0; i < columns.length; i++) {
+                order[columns[i]] = items[i];
+            }
+            return {
+                'id': this.safeString (order, 'OrderID'),
+                'info': order,
+                'timestamp': new Date (order['OrderDate']).getTime (),
+                'datetime': new Date (order['OrderDate']).getTime (),
+                'symbol': market['symbol'],
+                'type': order['OrdType'] === '2' ? 'limit' : 'market',
+                'side': order['Side'] === '1' ? 'buy' : 'sell',
+                'price': order['Price'],
+                'amount': order['OrderQty'],
+                'remaining': order['LeavesQty'],
+                'filled': order['OrderQty'] - order['LeavesQty'],
+                'cost': order['Volume'],
+            };
+        });
+        return orders;
     }
 
     async createOrder (symbol, type, side, amount, price = undefined, params = {}) {
